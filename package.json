@@ -15,7 +15,8 @@
   "license": "ISC",
   "dependencies": {
     "post-me": "^0.4.5",
-    "skynet-js": "^3.0.2"
+    "skynet-js": "^3.0.2",
+    "typescript": "^4.2.3"
   },
   "devDependencies": {
     "ts-loader": "^8.1.0",

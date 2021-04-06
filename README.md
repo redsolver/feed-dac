@@ -1,16 +1,20 @@
-# Content Record
+# Content Record DAC
+## NOTE (TMP - TODO remove)
 
-## Content Record Library 
+Currently needs:
+```
+npm link skynet-mysky-utils
+npm link skynet-js // dac branch
+```
 
-### Description
+## Introduction
 
-The content record library is a DAC for skapp developers that allows recording
-users's interactions with pieces of content. The main purpose of this tool is
-content discovery; if all skapps were to make use of this library, the end
-result would be a scrapable global record of all content and the popularity of
-that content.
+The content record DAC allows recording users's interactions with pieces of
+content. The main purpose of this DAC is content discovery; if all skapps were
+to make use of this library, the end result would be a scrapable global record
+of all content and the popularity of that content.
 
-### API
+## API
 
 There are two main actions that should leave an entry in the content record:
 - when a user `creates` content

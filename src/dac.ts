@@ -1,7 +1,6 @@
-import { SkynetClient, MySky } from "skynet-js";
+import { JsonData, SkynetClient, MySky } from "skynet-js";
 import type { Connection } from "post-me";
 import { IContentInfo, IIndex, IPage, IContentPersistence, INewContentPersistence, EntryType, IResult } from "./types";
-import { JsonData } from "skynet-js/dist/skydb";
 
 // consts
 const DATA_DOMAIN = "contentrecord.hns"

@@ -1,6 +1,6 @@
 import { SkynetClient, MySky, JsonData } from "skynet-js";
 import type { Connection } from "post-me";
-import { IContentInfo, IIndex, IPage, IContentPersistence, INewContentPersistence, EntryType, IResult } from "./types";
+import { IContentInfo, IIndex, IPage, IContentPersistence, INewContentPersistence, EntryType, IResult, IDictionary } from "./types";
 
 // consts
 const DATA_DOMAIN = "contentrecord.hns"
@@ -12,6 +12,9 @@ const ENTRY_MAX_SIZE = 1 << 12; // 4kib
 // index consts
 const INDEX_DEFAULT_PAGE_SIZE = 1000;
 const INDEX_VERSION = 1;
+
+// skapp dict path
+const SKAPPS_DICT_PATH = `${DATA_DOMAIN}/${SKAPP_NAME}/skapps.json`
 
 // new content paths
 const NC_INDEX_PATH = `${DATA_DOMAIN}/${SKAPP_NAME}/newcontent/index.json`
@@ -43,6 +46,7 @@ export default class ContentRecordDAC {
 
   public async init() {
     this.mySky = await this.client.loadMySky(DATA_DOMAIN)
+    this.registerSkappName(); // purposefully not awaited
   }
 
   // recordNewContent will record the new content creation in the content record
@@ -65,6 +69,17 @@ export default class ContentRecordDAC {
       console.log('Error occurred trying to record interaction, err: ', error)
       return { success: false, error: typeof error === 'string' ? error : JSON.stringify(error)  }
     }
+  }
+
+  // registerSkappName is called on init and ensures this skapp name is
+  // registered in the skapp name dictionary.
+  private async registerSkappName() {
+    let skapps = await this.downloadFile<IDictionary>(SKAPPS_DICT_PATH);
+    if (!skapps) {
+      skapps = {};
+    }
+    skapps[SKAPP_NAME] = true;
+    await this.updateFile(SKAPPS_DICT_PATH, skapps);
   }
 
   // handleNewEntry is called by both 'recordNewContent' and 'recordInteraction'

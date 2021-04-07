@@ -30,6 +30,9 @@ export interface IPage<IEntry> {
   entries: IEntry[];
 }
 
+export interface IDictionary {
+  [key:string]: boolean
+}
 export interface IResult {
   success: boolean;
   error?: string;

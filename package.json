@@ -14,6 +14,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "buffer": "^6.0.3",
     "post-me": "^0.4.5",
     "skynet-js": "^3.0.2"
   },

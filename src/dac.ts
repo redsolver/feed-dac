@@ -1,3 +1,4 @@
+import { Buffer } from "buffer"
 import { SkynetClient, MySky, JsonData } from "skynet-js";
 import type { Connection } from "post-me";
 import { IContentInfo, IIndex, IPage, IContentPersistence, INewContentPersistence, EntryType, IResult, IDictionary, IContentRecordDAC } from "./types";
@@ -177,16 +178,20 @@ export default class ContentRecordDAC implements IContentRecordDAC {
   // downloadFile merely wraps getJSON but is typed in a way that avoids
   // repeating the awkward "as unknown as T" everywhere
   private async downloadFile<T>(path: string): Promise<T | null> {
+    console.log('downloading file at path', path)
     const response = await this.mySky.getJSON(path)
     if (!response.data) {
+      console.log('no data found')
       return null;
     }
+    console.log('data found', response.data)
     return response.data as unknown as T
   }
 
   // updateFile merely wraps setJSON but is typed in a way that avoids repeating
   // the awkwars "as unknown as JsonData" everywhere
   private async updateFile<T>(path: string, data: T) {
+    console.log('updating file at path', path, data)
     await this.mySky.setJSON(path, data as unknown as JsonData)
   }
 

@@ -177,11 +177,11 @@ export default class ContentRecordDAC implements IContentRecordDAC {
   // downloadFile merely wraps getJSON but is typed in a way that avoids
   // repeating the awkward "as unknown as T" everywhere
   private async downloadFile<T>(path: string): Promise<T | null> {
-    const json = await this.mySky.getJSON(path)
-    if (!json) {
+    const response = await this.mySky.getJSON(path)
+    if (!response.data) {
       return null;
     }
-    return json as unknown as T
+    return response.data as unknown as T
   }
 
   // updateFile merely wraps setJSON but is typed in a way that avoids repeating

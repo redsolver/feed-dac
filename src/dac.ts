@@ -41,6 +41,7 @@ export default class ContentRecordDAC implements IContentRecordDAC {
     private connection: Connection,
   ) {
     this.connection.localHandle().setMethods({
+      onUserLogin: this.onUserLogin.bind(this),
       recordNewContent: this.recordNewContent.bind(this),
       recordInteraction: this.recordInteraction.bind(this),
     });
@@ -53,13 +54,16 @@ export default class ContentRecordDAC implements IContentRecordDAC {
       console.log('Failed to load MySky, err: ', error)
       return;
     }
+  }
 
-    // the following requests are purposefully not awaited on init
-
+  // onUserLogin is called by MySky when the user has logged in successfully
+  public onUserLogin() {
     // Ensure file hierarchy will ensure the index and current page file for
     // both entry types get precreated. This should alleviate a very slow
     // `getJSON` timeout on inserting the first entry.
     this.ensureFileHierarchy()
+      .then(() => { console.log('Successfully ensured file hierarchy') })
+      .catch(err => { console.log('Failed to ensure hierarchy, err: ', err) })
 
     // Register the skapp name in the dictionary
     this.registerSkappName()
@@ -69,21 +73,23 @@ export default class ContentRecordDAC implements IContentRecordDAC {
 
   // recordNewContent will record the new content creation in the content record
   public async recordNewContent(data: IContentInfo): Promise<IDACResponse> {
-    // purposefully not awaited
-    this.handleNewEntry(EntryType.NEWCONTENT, data).catch(error => {
+    try { 
+      // purposefully not awaited
+      this.handleNewEntry(EntryType.NEWCONTENT, data)
+    } catch(error) {
       console.log('Error occurred trying to record new content, err: ', error)
-      return { success: false, error: typeof error === 'string' ? error : JSON.stringify(error)  }
-    });
+    }
     return { submitted: true }
   }
 
   // recordInteraction will record a new interaction in the content record
   public async recordInteraction(data: IContentInfo): Promise<IDACResponse> {
-    // purposefully not awaited
-    this.handleNewEntry(EntryType.INTERACTIONS, data).catch(error => {
-      console.log('Error occurred trying to record interaction, err: ', error)
-      return { success: false, error: typeof error === 'string' ? error : JSON.stringify(error)  }
-    });
+    try {
+      // purposefully not awaited
+      this.handleNewEntry(EntryType.INTERACTIONS, data)
+    } catch(error) {
+      console.log('Error occurred trying to record interaction, err: ', error) 
+    };
     return { submitted: true }
   }
 
@@ -208,17 +214,11 @@ export default class ContentRecordDAC implements IContentRecordDAC {
   // after a certain amount of time.
   private async ensureFileHierarchy(): Promise<void> {
     for (const entryType of [EntryType.NEWCONTENT, EntryType.INTERACTIONS]) {
-      this
-        .fetchIndex(entryType)
-        .then(index =>
-          this
-            .fetchPage(entryType, index)
-            .catch(error => console.log('Failed to fetch index', error))
-        )
-        .catch(error => console.log('Failed to fetch index', error))
+      const index = await this.fetchIndex(entryType)
+      await this.fetchPage(entryType, index)
     }
-
   }
+
   // toPersistence turns content info into a content persistence object
   private toPersistence(data: IContentInfo): IContentPersistence {
     const persistence = {

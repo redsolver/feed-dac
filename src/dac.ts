@@ -1,11 +1,12 @@
 import { Buffer } from "buffer"
 import { SkynetClient, MySky, JsonData } from "skynet-js";
 import type { Connection } from "post-me";
-import { IContentInfo, IIndex, IPage, IContentPersistence, INewContentPersistence, EntryType, IResult, IDictionary, IContentRecordDAC } from "./types";
+import { IContentInfo, IIndex, IPage, IContentPersistence, INewContentPersistence, EntryType, IDACResponse, IDictionary, IContentRecordDAC } from "./types";
+import { cleanReferrer } from "./utils";
 
 // consts
-const DATA_DOMAIN = "contentrecord.hns"
-const SKAPP_NAME = document.referrer || "unknown"; // fallback
+const DATA_DOMAIN = "graio.hns" // TODO: update to actual domain
+const SKAPP_NAME = cleanReferrer(document.referrer);
 const PAGE_REF = '[NUM]';
 
 const ENTRY_MAX_SIZE = 1 << 12; // 4kib
@@ -53,32 +54,37 @@ export default class ContentRecordDAC implements IContentRecordDAC {
       return;
     }
 
-     // purposefully not awaited
+    // the following requests are purposefully not awaited on init
+
+    // Ensure file hierarchy will ensure the index and current page file for
+    // both entry types get precreated. This should alleviate a very slow
+    // `getJSON` timeout on inserting the first entry.
+    this.ensureFileHierarchy()
+
+    // Register the skapp name in the dictionary
     this.registerSkappName()
       .then(() => { console.log('Successfully registered skappname') })
       .catch(err => { console.log('Failed to register skappname, err: ', err) })
   }
 
   // recordNewContent will record the new content creation in the content record
-  public async recordNewContent(data: IContentInfo): Promise<IResult> {
-    try {
-      await this.handleNewEntry(EntryType.NEWCONTENT, data);
-      return { success: true }
-    } catch (error) {
+  public async recordNewContent(data: IContentInfo): Promise<IDACResponse> {
+    // purposefully not awaited
+    this.handleNewEntry(EntryType.NEWCONTENT, data).catch(error => {
       console.log('Error occurred trying to record new content, err: ', error)
       return { success: false, error: typeof error === 'string' ? error : JSON.stringify(error)  }
-    }
+    });
+    return { submitted: true }
   }
 
   // recordInteraction will record a new interaction in the content record
-  public async recordInteraction(data: IContentInfo): Promise<IResult> {
-    try {
-      await this.handleNewEntry(EntryType.INTERACTIONS, data);
-      return { success: true }
-    } catch (error) {
+  public async recordInteraction(data: IContentInfo): Promise<IDACResponse> {
+    // purposefully not awaited
+    this.handleNewEntry(EntryType.INTERACTIONS, data).catch(error => {
       console.log('Error occurred trying to record interaction, err: ', error)
       return { success: false, error: typeof error === 'string' ? error : JSON.stringify(error)  }
-    }
+    });
+    return { submitted: true }
   }
 
   // registerSkappName is called on init and ensures this skapp name is
@@ -115,6 +121,7 @@ export default class ContentRecordDAC implements IContentRecordDAC {
       : CI_PAGE_PATH;
     
     index.currPageNumEntries = page.entries.length
+
     // rotate pages if necessary
     if (index.currPageNumEntries === INDEX_DEFAULT_PAGE_SIZE) {
       index.currPageNumber += 1
@@ -195,6 +202,23 @@ export default class ContentRecordDAC implements IContentRecordDAC {
     await this.mySky.setJSON(path, data as unknown as JsonData)
   }
 
+  // ensureFileHierarchy ensures that for every entry type its current index and
+  // page file exist, this ensures we do not take the hit for it when the user
+  // interacts with the DAC, seeing as non existing file requests time out only
+  // after a certain amount of time.
+  private async ensureFileHierarchy(): Promise<void> {
+    for (const entryType of [EntryType.NEWCONTENT, EntryType.INTERACTIONS]) {
+      this
+        .fetchIndex(entryType)
+        .then(index =>
+          this
+            .fetchPage(entryType, index)
+            .catch(error => console.log('Failed to fetch index', error))
+        )
+        .catch(error => console.log('Failed to fetch index', error))
+    }
+
+  }
   // toPersistence turns content info into a content persistence object
   private toPersistence(data: IContentInfo): IContentPersistence {
     const persistence = {

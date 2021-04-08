@@ -1,7 +1,7 @@
 
 export interface IContentRecordDAC {
-  recordNewContent(content: IContentInfo): Promise<IResult>;
-  recordInteraction(content: IContentInfo): Promise<IResult>;
+  recordNewContent(content: IContentInfo): Promise<IDACResponse>;
+  recordInteraction(content: IContentInfo): Promise<IDACResponse>;
 }
 
 export interface IContentInfo {
@@ -38,8 +38,8 @@ export interface IPage<IEntry> {
 export interface IDictionary {
   [key:string]: boolean
 }
-export interface IResult {
-  success: boolean;
+export interface IDACResponse {
+  submitted: boolean;
   error?: string;
 }
 

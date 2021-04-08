@@ -8,18 +8,22 @@
     "lint:eslint": "eslint --ext .ts src",
     "lint:tsc": "tsc --noemit",
     "start": "webpack serve --open",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "jest",
     "watch": "webpack --watch"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
     "post-me": "^0.4.5",
-    "skynet-js": "^3.0.2",
-    "typescript": "^4.2.3"
+    "skynet-js": "^3.0.2"
   },
   "devDependencies": {
+    "@types/jest": "^26.0.22",
+    "@types/node": "^14.14.37",
+    "jest": "^26.6.3",
+    "ts-jest": "^26.5.4",
     "ts-loader": "^8.1.0",
+    "typescript": "^4.2.4",
     "webpack": "^5.28.0",
     "webpack-cli": "^4.6.0",
     "webpack-dev-server": "^3.11.2"

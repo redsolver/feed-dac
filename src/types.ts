@@ -1,4 +1,9 @@
 
+export interface IContentRecordDAC {
+  recordNewContent(content: IContentInfo): Promise<IResult>;
+  recordInteraction(content: IContentInfo): Promise<IResult>;
+}
+
 export interface IContentInfo {
   content: string;    // skylink
   metadata: object;   // should be valid JSON

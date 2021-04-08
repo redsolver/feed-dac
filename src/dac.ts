@@ -1,10 +1,10 @@
 import { SkynetClient, MySky, JsonData } from "skynet-js";
 import type { Connection } from "post-me";
-import { IContentInfo, IIndex, IPage, IContentPersistence, INewContentPersistence, EntryType, IResult, IDictionary } from "./types";
+import { IContentInfo, IIndex, IPage, IContentPersistence, INewContentPersistence, EntryType, IResult, IDictionary, IContentRecordDAC } from "./types";
 
 // consts
 const DATA_DOMAIN = "contentrecord.hns"
-const SKAPP_NAME = document.referrer;
+const SKAPP_NAME = document.referrer || "unknown"; // fallback
 const PAGE_REF = '[NUM]';
 
 const ENTRY_MAX_SIZE = 1 << 12; // 4kib
@@ -14,7 +14,7 @@ const INDEX_DEFAULT_PAGE_SIZE = 1000;
 const INDEX_VERSION = 1;
 
 // skapp dict path
-const SKAPPS_DICT_PATH = `${DATA_DOMAIN}/${SKAPP_NAME}/skapps.json`
+const SKAPPS_DICT_PATH = `${DATA_DOMAIN}/skapps.json`
 
 // new content paths
 const NC_INDEX_PATH = `${DATA_DOMAIN}/${SKAPP_NAME}/newcontent/index.json`
@@ -30,8 +30,8 @@ const CI_PAGE_PATH = `${DATA_DOMAIN}/${SKAPP_NAME}/interactions/page_[NUM].json`
 // - content interaction (can be anything)
 //
 // The DAC will store these interactions across a fanout data structure that
-// consists of an "index" file that points to multiple "page" files.
-export default class ContentRecordDAC {
+// consists of an index file that points to multiple page files.
+export default class ContentRecordDAC implements IContentRecordDAC {
   private mySky: MySky;
 
   public constructor(
@@ -45,8 +45,17 @@ export default class ContentRecordDAC {
   }
 
   public async init() {
-    this.mySky = await this.client.loadMySky(DATA_DOMAIN)
-    this.registerSkappName(); // purposefully not awaited
+    try {
+      this.mySky = await this.client.loadMySky(DATA_DOMAIN)
+    } catch (error) {
+      console.log('Failed to load MySky, err: ', error)
+      return;
+    }
+
+     // purposefully not awaited
+    this.registerSkappName()
+      .then(() => { console.log('Successfully registered skappname') })
+      .catch(err => { console.log('Failed to register skappname, err: ', err) })
   }
 
   // recordNewContent will record the new content creation in the content record
@@ -86,7 +95,6 @@ export default class ContentRecordDAC {
   // and handles the given entry accordingly.
   private async handleNewEntry(kind: EntryType, data: IContentInfo) {
     const index = await this.fetchIndex(kind);
-
     let page = await this.fetchPage<IContentPersistence>(kind, index);
     page.entries.push(this.toPersistence(data));
 

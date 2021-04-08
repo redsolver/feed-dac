@@ -1,11 +1,12 @@
 import { Buffer } from "buffer"
 import { SkynetClient, MySky, JsonData } from "skynet-js";
-import type { Connection } from "post-me";
+import { ChildHandshake, Connection, WindowMessenger } from "post-me";
 import { IContentInfo, IIndex, IPage, IContentPersistence, INewContentPersistence, EntryType, IDACResponse, IDictionary, IContentRecordDAC } from "./types";
 import { cleanReferrer } from "./utils";
 
 // consts
-const DATA_DOMAIN = "graio.hns" // TODO: update to actual domain
+// const DATA_DOMAIN = "graio.hns"; // TODO: update to actual domain
+const DATA_DOMAIN = "skynetbridge.hns"; // TODO: update to actual domain
 const SKAPP_NAME = cleanReferrer(document.referrer);
 const PAGE_REF = '[NUM]';
 
@@ -35,16 +36,28 @@ const CI_PAGE_PATH = `${DATA_DOMAIN}/${SKAPP_NAME}/interactions/page_[NUM].json`
 // consists of an index file that points to multiple page files.
 export default class ContentRecordDAC implements IContentRecordDAC {
   private mySky: MySky;
+  private client: SkynetClient;
+  private connection: Promise<Connection>;
 
-  public constructor(
-    private client: SkynetClient,
-    private connection: Connection,
-  ) {
-    this.connection.localHandle().setMethods({
+  public constructor() {
+    // create client
+    this.client = new SkynetClient("https://siasky.net");
+
+    const methods = {
+      init: this.init.bind(this),
       onUserLogin: this.onUserLogin.bind(this),
       recordNewContent: this.recordNewContent.bind(this),
       recordInteraction: this.recordInteraction.bind(this),
-    });
+    };
+    // create connection
+    this.connection = ChildHandshake(
+      new WindowMessenger({
+        localWindow: window,
+        remoteWindow: window.parent,
+        remoteOrigin: "*",
+      }),
+      methods
+    );
   }
 
   public async init() {
@@ -52,7 +65,7 @@ export default class ContentRecordDAC implements IContentRecordDAC {
       this.mySky = await this.client.loadMySky(DATA_DOMAIN)
     } catch (error) {
       console.log('Failed to load MySky, err: ', error)
-      return;
+      throw error;
     }
   }
 
@@ -192,13 +205,13 @@ export default class ContentRecordDAC implements IContentRecordDAC {
   // repeating the awkward "as unknown as T" everywhere
   private async downloadFile<T>(path: string): Promise<T | null> {
     console.log('downloading file at path', path)
-    const response = await this.mySky.getJSON(path)
-    if (!response.data) {
+    const { data } = await this.mySky.getJSON(path)
+    if (!data) {
       console.log('no data found')
       return null;
     }
-    console.log('data found', response.data)
-    return response.data as unknown as T
+    console.log('data found', data)
+    return data as unknown as T
   }
 
   // updateFile merely wraps setJSON but is typed in a way that avoids repeating

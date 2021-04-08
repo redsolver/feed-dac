@@ -57,7 +57,7 @@ export default class ContentRecordDAC implements IContentRecordDAC {
   }
 
   // onUserLogin is called by MySky when the user has logged in successfully
-  public onUserLogin() {
+  public async onUserLogin() {
     // Ensure file hierarchy will ensure the index and current page file for
     // both entry types get precreated. This should alleviate a very slow
     // `getJSON` timeout on inserting the first entry.

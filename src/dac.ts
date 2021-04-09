@@ -4,12 +4,13 @@ import { ChildHandshake, Connection, WindowMessenger } from "post-me";
 import { IContentInfo, IIndex, IPage, IContentPersistence, INewContentPersistence, EntryType, IDACResponse, IDictionary, IContentRecordDAC, IFilePaths } from "./types";
 import { stripSuffix } from "./utils";
 
-const urlParams = new URLSearchParams(window.location.search);
-
 // DAC consts
 const DATA_DOMAIN = "skynetbridge.hns"; // TODO: update to actual domain
-const DEBUG_ENABLED = false;
-const DEV_ENABLED = urlParams.get('dev') === "dev";
+
+// TODO: want to change this to true dev=true, as opposed to dev=dev
+const urlParams = new URLSearchParams(window.location.search);
+const DEBUG_ENABLED = urlParams.get('debug') === "debug";
+const DEV_ENABLED = urlParams.get('dev') === "dev"; 
 
 // page consts
 const ENTRY_MAX_SIZE = 1 << 12; // 4kib

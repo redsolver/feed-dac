@@ -2,7 +2,6 @@ import { Buffer } from "buffer"
 import { SkynetClient, MySky, JsonData } from "skynet-js";
 import { ChildHandshake, Connection, WindowMessenger } from "post-me";
 import { IContentInfo, IIndex, IPage, IContentPersistence, INewContentPersistence, EntryType, IDACResponse, IDictionary, IContentRecordDAC, IFilePaths } from "./types";
-import { stripSuffix, stripPrefix } from "./utils";
 
 // DAC consts
 const DATA_DOMAIN = "crqa.hns";
@@ -32,7 +31,7 @@ export default class ContentRecordDAC implements IContentRecordDAC {
   private client: SkynetClient
   private mySky: MySky;
   private paths: IFilePaths;
-  private domain: string;
+  private skapp: string;
 
   public constructor(
   ) {
@@ -60,21 +59,18 @@ export default class ContentRecordDAC implements IContentRecordDAC {
 
   public async init() {
     try {
-      // extract the domain and set the filepaths
-      // TODO: use window.location.hostname? domain is not ok yet
-      let domain = await this.client.extractDomain(document.referrer)
-      domain = stripSuffix(domain, "/")
-      domain = stripPrefix(domain, "http://")
-      domain = stripPrefix(domain, "https://")
-      this.log("domain", domain)
-      this.domain = domain;
+      // extract the skappname and use it to set the filepaths
+      const hostname = new URL(document.referrer).hostname
+      const skapp = await this.client.extractDomain(hostname)
+      this.log("loaded from skapp", skapp)
+      this.skapp = skapp;
 
       this.paths = {
         SKAPPS_DICT_PATH: `${DATA_DOMAIN}/skapps.json`,
-        NC_INDEX_PATH: `${DATA_DOMAIN}/${domain}/newcontent/index.json`,
-        NC_PAGE_PATH: `${DATA_DOMAIN}/${domain}/newcontent/page_[NUM].json`,
-        CI_INDEX_PATH: `${DATA_DOMAIN}/${domain}/interactions/index.json`,
-        CI_PAGE_PATH: `${DATA_DOMAIN}/${domain}/interactions/page_[NUM].json`,
+        NC_INDEX_PATH: `${DATA_DOMAIN}/${skapp}/newcontent/index.json`,
+        NC_PAGE_PATH: `${DATA_DOMAIN}/${skapp}/newcontent/page_[NUM].json`,
+        CI_INDEX_PATH: `${DATA_DOMAIN}/${skapp}/interactions/index.json`,
+        CI_PAGE_PATH: `${DATA_DOMAIN}/${skapp}/interactions/page_[NUM].json`,
       }
 
       // load mysky
@@ -131,7 +127,7 @@ export default class ContentRecordDAC implements IContentRecordDAC {
     if (!skapps) {
       skapps = {};
     }
-    skapps[this.domain] = true;
+    skapps[this.skapp] = true;
     await this.updateFile(SKAPPS_DICT_PATH, skapps);
   }
 

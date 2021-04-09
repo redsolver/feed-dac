@@ -5,7 +5,7 @@ export interface IContentRecordDAC {
 }
 
 export interface IContentInfo {
-  content: string;    // skylink
+  skylink: string;    // skylink
   metadata: object;   // should be valid JSON
 }
 

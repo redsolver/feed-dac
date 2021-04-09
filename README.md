@@ -14,7 +14,7 @@ library itself is a simple class that acts as a wrapper around the Content
 Record DAC. The library will contain a hardcoded reference to its domain, thus
 abstracting all of its complexities from the skapp developer.
 
-See https://github.com/SkynetHQ/content-record-library. 
+See https://github.com/SkynetHQ/content-record-library.
 
 ## Architecture
 
@@ -23,7 +23,8 @@ publicly discoverable. This makes it easy to scrape the content record. To
 scrape you should only need the user's public key. From there you can predict
 all of the files in which the content entries are stored by looking at some key
 index files.
-### FileSystem 
+
+### FileSystem
 
 The filesystem is fairly straightforward:
 
@@ -44,6 +45,7 @@ contentrecord.hns/myskapp.hns/interactions/page_2.json
 ...
 
 ```
+
 #### Skapp Dictionary
 
 At the data domain's root there's a `skapps.json` file that contains a
@@ -91,6 +93,6 @@ export interface IPage<IEntry> {
 }
 
 export interface IDictionary {
-  [key:string]: boolean
+  [key: string]: boolean;
 }
 ```

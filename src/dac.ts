@@ -274,8 +274,12 @@ export default class ContentRecordDAC implements IContentRecordDAC {
   // toPersistence turns content info into a content persistence object
   private toPersistence(data: IContentInfo): IContentPersistence {
     const persistence = {
-      ...data,
       timestamp: Math.floor(Date.now() / 1000),
+      ...data,
+    }
+
+    if (persistence.metadata === undefined) {
+      persistence.metadata = {};
     }
     
     // validate the given data does not exceed max size

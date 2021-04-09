@@ -98,10 +98,10 @@ export default class ContentRecordDAC implements IContentRecordDAC {
   }
 
   // recordNewContent will record the new content creation in the content record
-  public async recordNewContent(data: IContentInfo): Promise<IDACResponse> {
+  public async recordNewContent(...data: IContentInfo[]): Promise<IDACResponse> {
     try { 
       // purposefully not awaited
-      this.handleNewEntry(EntryType.NEWCONTENT, data)
+      this.handleNewEntries(EntryType.NEWCONTENT, ...data)
     } catch(error) {
       this.log('Error occurred trying to record new content, err: ', error)
     }
@@ -109,10 +109,10 @@ export default class ContentRecordDAC implements IContentRecordDAC {
   }
 
   // recordInteraction will record a new interaction in the content record
-  public async recordInteraction(data: IContentInfo): Promise<IDACResponse> {
+  public async recordInteraction(...data: IContentInfo[]): Promise<IDACResponse> {
     try {
       // purposefully not awaited
-      this.handleNewEntry(EntryType.INTERACTIONS, data)
+      this.handleNewEntries(EntryType.INTERACTIONS, ...data)
     } catch(error) {
       this.log('Error occurred trying to record interaction, err: ', error) 
     };
@@ -131,20 +131,44 @@ export default class ContentRecordDAC implements IContentRecordDAC {
     await this.updateFile(SKAPPS_DICT_PATH, skapps);
   }
 
-  // handleNewEntry is called by both 'recordNewContent' and 'recordInteraction'
-  // and handles the given entry accordingly.
-  private async handleNewEntry(kind: EntryType, data: IContentInfo) {
-    const index = await this.fetchIndex(kind);
+  // handleNewEntries is called by both 'recordNewContent' and
+  // 'recordInteraction' and handles the given entry accordingly.
+  private async handleNewEntries(kind: EntryType, ...data: IContentInfo[]) {
+    let index = await this.fetchIndex(kind);
     let page = await this.fetchPage<IContentPersistence>(kind, index);
-    page.entries.push(this.toPersistence(data));
 
-    await this.updateFile(page.pagePath, page);
-    await this.updateIndex(kind, index, page);
+    let entriesAddedToPage = 0;
+    for (const entry of data) {
+      let persistence: IContentPersistence;
+      try {
+        persistence = this.toPersistence(entry);
+      } catch (error) {
+        this.log("Failed to transform entry to persistence object", error)
+        continue;
+      }
+
+      page.entries.push(persistence);
+      entriesAddedToPage++;
+      if (page.entries.length === INDEX_DEFAULT_PAGE_SIZE) {
+        // TODO: optimize performance
+        await this.updateFile(page.pagePath, page);
+        index = await this.updateIndex(kind, index, page);
+        page = await this.fetchPage<IContentPersistence>(kind, index);
+        entriesAddedToPage = 0;
+      }
+    }
+
+    if (entriesAddedToPage) {
+      await Promise.all([
+        this.updateFile(page.pagePath, page),
+        this.updateIndex(kind, index, page)
+      ]);
+    }
   }
 
   // updateIndex is called after a new entry got inserted and will update the
   // index to reflect this recently inserted entry.
-  private async updateIndex(kind: EntryType, index: IIndex, page: IPage<INewContentPersistence>) {
+  private async updateIndex(kind: EntryType, index: IIndex, page: IPage<INewContentPersistence>): Promise<IIndex> {
     const indexPath = kind === EntryType.NEWCONTENT
       ? this.paths.NC_INDEX_PATH
       : this.paths.CI_INDEX_PATH;
@@ -163,6 +187,7 @@ export default class ContentRecordDAC implements IContentRecordDAC {
       index.pages.push(newPage)
     }
     await this.updateFile(indexPath, index)
+    return index;
   }
 
   // fetchIndex downloads the index, if the index does not exist yet it will

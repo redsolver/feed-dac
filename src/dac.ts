@@ -2,7 +2,7 @@ import { Buffer } from "buffer"
 import { SkynetClient, MySky, JsonData } from "skynet-js";
 import { ChildHandshake, Connection, WindowMessenger } from "post-me";
 import { IContentInfo, IIndex, IPage, IContentPersistence, INewContentPersistence, EntryType, IDACResponse, IDictionary, IContentRecordDAC, IFilePaths } from "./types";
-import { stripSuffix } from "./utils";
+import { stripSuffix, stripPrefix } from "./utils";
 
 // DAC consts
 const DATA_DOMAIN = "crqa.hns";
@@ -60,14 +60,14 @@ export default class ContentRecordDAC implements IContentRecordDAC {
 
   public async init() {
     try {
-      // TODO: use window.location.hostname?
-      let referrer = document.referrer;
-      referrer = stripSuffix(referrer, "http://")
-      referrer = stripSuffix(referrer, "https://")
-
       // extract the domain and set the filepaths
-      let domain = await this.client.extractDomain(referrer)
+      // TODO: use window.location.hostname? domain is not ok yet
+      let domain = await this.client.extractDomain(document.referrer)
       domain = stripSuffix(domain, "/")
+      domain = stripPrefix(domain, "http://")
+      domain = stripPrefix(domain, "https://")
+      this.log("domain", domain)
+      this.domain = domain;
 
       this.paths = {
         SKAPPS_DICT_PATH: `${DATA_DOMAIN}/skapps.json`,
@@ -76,7 +76,6 @@ export default class ContentRecordDAC implements IContentRecordDAC {
         CI_INDEX_PATH: `${DATA_DOMAIN}/${domain}/interactions/index.json`,
         CI_PAGE_PATH: `${DATA_DOMAIN}/${domain}/interactions/page_[NUM].json`,
       }
-      this.domain = domain;
 
       // load mysky
       const opts = { dev: DEV_ENABLED }

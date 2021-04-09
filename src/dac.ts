@@ -5,7 +5,7 @@ import { IContentInfo, IIndex, IPage, IContentPersistence, INewContentPersistenc
 import { stripSuffix } from "./utils";
 
 // DAC consts
-const DATA_DOMAIN = "skynetbridge.hns"; // TODO: update to actual domain
+const DATA_DOMAIN = "crqa.hns";
 
 // TODO: want to change this to true dev=true, as opposed to dev=dev
 const urlParams = new URLSearchParams(window.location.search);

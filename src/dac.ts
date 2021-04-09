@@ -7,10 +7,9 @@ import { stripSuffix } from "./utils";
 // DAC consts
 const DATA_DOMAIN = "crqa.hns";
 
-// TODO: want to change this to true dev=true, as opposed to dev=dev
 const urlParams = new URLSearchParams(window.location.search);
-const DEBUG_ENABLED = urlParams.get('debug') === "debug";
-const DEV_ENABLED = urlParams.get('dev') === "dev"; 
+const DEBUG_ENABLED = urlParams.get('debug') === "true";
+const DEV_ENABLED = urlParams.get('dev') === "true";
 
 // page consts
 const ENTRY_MAX_SIZE = 1 << 12; // 4kib

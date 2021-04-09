@@ -29,13 +29,16 @@ const INDEX_VERSION = 1;
 export default class ContentRecordDAC implements IContentRecordDAC {
   protected connection: Promise<Connection>;
 
+  private client: SkynetClient
   private mySky: MySky;
   private paths: IFilePaths;
   private domain: string;
 
   public constructor(
-    private client: SkynetClient
   ) {
+    // create client
+    this.client = new SkynetClient();
+
     // define API
     const methods = {
       init: this.init.bind(this),

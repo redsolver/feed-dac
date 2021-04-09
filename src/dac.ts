@@ -60,8 +60,13 @@ export default class ContentRecordDAC implements IContentRecordDAC {
 
   public async init() {
     try {
+      // TODO: use window.location.hostname?
+      let referrer = document.referrer;
+      referrer = stripSuffix(referrer, "http://")
+      referrer = stripSuffix(referrer, "https://")
+
       // extract the domain and set the filepaths
-      let domain = await this.client.extractDomain(document.referrer)
+      let domain = await this.client.extractDomain(referrer)
       domain = stripSuffix(domain, "/")
 
       this.paths = {

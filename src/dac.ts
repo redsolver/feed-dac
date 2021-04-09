@@ -1,34 +1,23 @@
 import { Buffer } from "buffer"
 import { SkynetClient, MySky, JsonData } from "skynet-js";
 import { ChildHandshake, Connection, WindowMessenger } from "post-me";
-import { IContentInfo, IIndex, IPage, IContentPersistence, INewContentPersistence, EntryType, IDACResponse, IDictionary, IContentRecordDAC } from "./types";
-import { cleanReferrer } from "./utils";
+import { IContentInfo, IIndex, IPage, IContentPersistence, INewContentPersistence, EntryType, IDACResponse, IDictionary, IContentRecordDAC, IFilePaths } from "./types";
+import { stripSuffix } from "./utils";
 
-// consts
-// const DATA_DOMAIN = "graio.hns"; // TODO: update to actual domain
+const urlParams = new URLSearchParams(window.location.search);
+
+// DAC consts
 const DATA_DOMAIN = "skynetbridge.hns"; // TODO: update to actual domain
-const SKAPP_NAME = cleanReferrer(document.referrer);
-const PAGE_REF = '[NUM]';
+const DEBUG_ENABLED = false;
+const DEV_ENABLED = urlParams.get('dev') === "dev";
 
+// page consts
 const ENTRY_MAX_SIZE = 1 << 12; // 4kib
+const PAGE_REF = '[NUM]';
 
 // index consts
 const INDEX_DEFAULT_PAGE_SIZE = 1000;
 const INDEX_VERSION = 1;
-
-// skapp dict path
-const SKAPPS_DICT_PATH = `${DATA_DOMAIN}/skapps.json`
-
-// new content paths
-const NC_INDEX_PATH = `${DATA_DOMAIN}/${SKAPP_NAME}/newcontent/index.json`
-const NC_PAGE_PATH = `${DATA_DOMAIN}/${SKAPP_NAME}/newcontent/page_[NUM].json`
-
-// content interaction paths
-const CI_INDEX_PATH = `${DATA_DOMAIN}/${SKAPP_NAME}/interactions/index.json`
-const CI_PAGE_PATH = `${DATA_DOMAIN}/${SKAPP_NAME}/interactions/page_[NUM].json`
-
-const urlParams = new URLSearchParams(window.location.search);
-const dev = urlParams.get('dev') === "dev";
 
 // ContentRecordDAC is a DAC that allows recording user interactions with pieces
 // of content. There are two types of interactions which are:
@@ -38,20 +27,23 @@ const dev = urlParams.get('dev') === "dev";
 // The DAC will store these interactions across a fanout data structure that
 // consists of an index file that points to multiple page files.
 export default class ContentRecordDAC implements IContentRecordDAC {
+  protected connection: Promise<Connection>;
+
   private mySky: MySky;
-  private client: SkynetClient;
-  private connection: Promise<Connection>;
+  private paths: IFilePaths;
+  private domain: string;
 
-  public constructor() {
-    // create client
-    this.client = new SkynetClient("https://siasky.net");
-
+  public constructor(
+    private client: SkynetClient
+  ) {
+    // define API
     const methods = {
       init: this.init.bind(this),
       onUserLogin: this.onUserLogin.bind(this),
       recordNewContent: this.recordNewContent.bind(this),
       recordInteraction: this.recordInteraction.bind(this),
     };
+
     // create connection
     this.connection = ChildHandshake(
       new WindowMessenger({
@@ -65,9 +57,24 @@ export default class ContentRecordDAC implements IContentRecordDAC {
 
   public async init() {
     try {
-      this.mySky = await this.client.loadMySky(DATA_DOMAIN, { dev })
+      // extract the domain and set the filepaths
+      let domain = await this.client.extractDomain(document.referrer)
+      domain = stripSuffix(domain, "/")
+
+      this.paths = {
+        SKAPPS_DICT_PATH: `${DATA_DOMAIN}/skapps.json`,
+        NC_INDEX_PATH: `${DATA_DOMAIN}/${domain}/newcontent/index.json`,
+        NC_PAGE_PATH: `${DATA_DOMAIN}/${domain}/newcontent/page_[NUM].json`,
+        CI_INDEX_PATH: `${DATA_DOMAIN}/${domain}/interactions/index.json`,
+        CI_PAGE_PATH: `${DATA_DOMAIN}/${domain}/interactions/page_[NUM].json`,
+      }
+      this.domain = domain;
+
+      // load mysky
+      const opts = { dev: DEV_ENABLED }
+      this.mySky = await this.client.loadMySky(DATA_DOMAIN, opts)
     } catch (error) {
-      console.log('Failed to load MySky, err: ', error)
+      this.log('Failed to load MySky, err: ', error)
       throw error;
     }
   }
@@ -78,13 +85,13 @@ export default class ContentRecordDAC implements IContentRecordDAC {
     // both entry types get precreated. This should alleviate a very slow
     // `getJSON` timeout on inserting the first entry.
     this.ensureFileHierarchy()
-      .then(() => { console.log('Successfully ensured file hierarchy') })
-      .catch(err => { console.log('Failed to ensure hierarchy, err: ', err) })
+      .then(() => { this.log('Successfully ensured file hierarchy') })
+      .catch(err => { this.log('Failed to ensure hierarchy, err: ', err) })
 
     // Register the skapp name in the dictionary
     this.registerSkappName()
-      .then(() => { console.log('Successfully registered skappname') })
-      .catch(err => { console.log('Failed to register skappname, err: ', err) })
+      .then(() => { this.log('Successfully registered skappname') })
+      .catch(err => { this.log('Failed to register skappname, err: ', err) })
   }
 
   // recordNewContent will record the new content creation in the content record
@@ -93,7 +100,7 @@ export default class ContentRecordDAC implements IContentRecordDAC {
       // purposefully not awaited
       this.handleNewEntry(EntryType.NEWCONTENT, data)
     } catch(error) {
-      console.log('Error occurred trying to record new content, err: ', error)
+      this.log('Error occurred trying to record new content, err: ', error)
     }
     return { submitted: true }
   }
@@ -104,7 +111,7 @@ export default class ContentRecordDAC implements IContentRecordDAC {
       // purposefully not awaited
       this.handleNewEntry(EntryType.INTERACTIONS, data)
     } catch(error) {
-      console.log('Error occurred trying to record interaction, err: ', error) 
+      this.log('Error occurred trying to record interaction, err: ', error) 
     };
     return { submitted: true }
   }
@@ -112,11 +119,12 @@ export default class ContentRecordDAC implements IContentRecordDAC {
   // registerSkappName is called on init and ensures this skapp name is
   // registered in the skapp name dictionary.
   private async registerSkappName() {
+    const { SKAPPS_DICT_PATH } = this.paths;
     let skapps = await this.downloadFile<IDictionary>(SKAPPS_DICT_PATH);
     if (!skapps) {
       skapps = {};
     }
-    skapps[SKAPP_NAME] = true;
+    skapps[this.domain] = true;
     await this.updateFile(SKAPPS_DICT_PATH, skapps);
   }
 
@@ -133,14 +141,14 @@ export default class ContentRecordDAC implements IContentRecordDAC {
 
   // updateIndex is called after a new entry got inserted and will update the
   // index to reflect this recently inserted entry.
-  private async updateIndex(kind: EntryType, index: IIndex, page: IPage<INewContentPersistence>) { 
+  private async updateIndex(kind: EntryType, index: IIndex, page: IPage<INewContentPersistence>) {
     const indexPath = kind === EntryType.NEWCONTENT
-      ? NC_INDEX_PATH
-      : CI_INDEX_PATH;
+      ? this.paths.NC_INDEX_PATH
+      : this.paths.CI_INDEX_PATH;
   
     const pagePath = kind === EntryType.NEWCONTENT
-      ? NC_PAGE_PATH
-      : CI_PAGE_PATH;
+      ? this.paths.NC_PAGE_PATH
+      : this.paths.CI_PAGE_PATH;
     
     index.currPageNumEntries = page.entries.length
 
@@ -158,12 +166,12 @@ export default class ContentRecordDAC implements IContentRecordDAC {
   // return the default index.
   private async fetchIndex(kind: EntryType): Promise<IIndex> {
     const indexPath = kind === EntryType.NEWCONTENT
-      ? NC_INDEX_PATH
-      : CI_INDEX_PATH;
+      ? this.paths.NC_INDEX_PATH
+      : this.paths.CI_INDEX_PATH;
     
     const firstPagePath = kind === EntryType.NEWCONTENT
-      ? NC_PAGE_PATH.replace(PAGE_REF, String(0))
-      : CI_PAGE_PATH.replace(PAGE_REF, String(0));
+      ? this.paths.NC_PAGE_PATH.replace(PAGE_REF, String(0))
+      : this.paths.CI_PAGE_PATH.replace(PAGE_REF, String(0));
 
     let index = await this.downloadFile<IIndex>(indexPath);
     if (!index) {
@@ -182,12 +190,12 @@ export default class ContentRecordDAC implements IContentRecordDAC {
   // exist yet it will return the default page.
   private async fetchPage<T>(kind: EntryType, index: IIndex): Promise<IPage<T>> {
     const indexPath = kind === EntryType.NEWCONTENT
-      ? NC_INDEX_PATH
-      : CI_INDEX_PATH;
+      ? this.paths.NC_INDEX_PATH
+      : this.paths.CI_INDEX_PATH;
 
     const pagePath = kind === EntryType.NEWCONTENT
-      ? NC_PAGE_PATH
-      : CI_PAGE_PATH;
+      ? this.paths.NC_PAGE_PATH
+      : this.paths.CI_PAGE_PATH;
     
     const currPageStr = String(index.currPageNumber)
     const currPagePath = pagePath.replace(PAGE_REF, currPageStr);
@@ -207,20 +215,20 @@ export default class ContentRecordDAC implements IContentRecordDAC {
   // downloadFile merely wraps getJSON but is typed in a way that avoids
   // repeating the awkward "as unknown as T" everywhere
   private async downloadFile<T>(path: string): Promise<T | null> {
-    console.log('downloading file at path', path)
+    this.log('downloading file at path', path)
     const { data } = await this.mySky.getJSON(path)
     if (!data) {
-      console.log('no data found')
+      this.log('no data found at path', path)
       return null;
     }
-    console.log('data found', data)
+    this.log('data found at path', path, data)
     return data as unknown as T
   }
 
   // updateFile merely wraps setJSON but is typed in a way that avoids repeating
   // the awkwars "as unknown as JsonData" everywhere
   private async updateFile<T>(path: string, data: T) {
-    console.log('updating file at path', path, data)
+    this.log('updating file at path', path, data)
     await this.mySky.setJSON(path, data as unknown as JsonData)
   }
 
@@ -249,5 +257,12 @@ export default class ContentRecordDAC implements IContentRecordDAC {
     }
 
     return persistence;
+  }
+
+  // log prints to stdout only if DEBUG_ENABLED flag is set
+  private log(message: string, ...optionalContext: any[]) {
+    if (DEBUG_ENABLED) {
+      console.log(message, ...optionalContext)
+    }
   }
 }

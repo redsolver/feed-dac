@@ -11,15 +11,3 @@ export function stripSuffix(str: string, suffix: string): string {
   }
   return str;
 }
-
-// TODO: improve
-export function cleanReferrer(referrer: string) {
-  if (!referrer) {
-    return "unknown";  // fallback
-  }
-  referrer = stripPrefix(referrer, 'https://')
-  referrer = stripPrefix(referrer, 'http://')
-  referrer = stripSuffix(referrer, '.siasky.net')
-  referrer = stripSuffix(referrer, '/')
-  return referrer;
-}

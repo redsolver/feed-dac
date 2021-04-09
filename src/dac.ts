@@ -27,6 +27,9 @@ const NC_PAGE_PATH = `${DATA_DOMAIN}/${SKAPP_NAME}/newcontent/page_[NUM].json`
 const CI_INDEX_PATH = `${DATA_DOMAIN}/${SKAPP_NAME}/interactions/index.json`
 const CI_PAGE_PATH = `${DATA_DOMAIN}/${SKAPP_NAME}/interactions/page_[NUM].json`
 
+const urlParams = new URLSearchParams(window.location.search);
+const dev = urlParams.get('dev') === "dev";
+
 // ContentRecordDAC is a DAC that allows recording user interactions with pieces
 // of content. There are two types of interactions which are:
 // - content creation
@@ -62,7 +65,7 @@ export default class ContentRecordDAC implements IContentRecordDAC {
 
   public async init() {
     try {
-      this.mySky = await this.client.loadMySky(DATA_DOMAIN)
+      this.mySky = await this.client.loadMySky(DATA_DOMAIN, { dev })
     } catch (error) {
       console.log('Failed to load MySky, err: ', error)
       throw error;

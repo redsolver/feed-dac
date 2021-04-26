@@ -1,20 +1,29 @@
+import { Post, PostContent } from "./skystandards";
 
-export interface IContentRecordDAC {
-  recordNewContent(content: IContentInfo): Promise<IDACResponse>;
-  recordInteraction(content: IContentInfo): Promise<IDACResponse>;
+export interface IFeedDACResponse {
+  ref?: string;
+  success: boolean;
+  error?: string;
+}
+export interface IFeedDAC {
+  createPost(content: PostContent, mentions: string[]): Promise<IFeedDACResponse>;
+
+  createComment(content: PostContent, commentTo: string, parent: Post, mentions: string[]): Promise<IFeedDACResponse>;
+
+  createRepost(repostOf: string, parent: Post, mentions: string[]): Promise<IFeedDACResponse>;
 }
 
-export interface IContentInfo {
+/* export interface IContentInfo {
   skylink: string;    // skylink
   metadata: object;   // should be valid JSON
 }
 
 export interface IContentPersistence {
   timestamp: number;  // unix timestamp of recording
-}
+} */
 
-export interface INewContentPersistence extends IContentPersistence { }
-export interface IInteractionPersistence extends IContentPersistence { }
+/* export interface INewContentPersistence extends IContentPersistence { }
+export interface IInteractionPersistence extends IContentPersistence { } */
 
 export interface IIndex {
   version: number;
@@ -22,30 +31,27 @@ export interface IIndex {
   currPageNumber: number;
   currPageNumEntries: number;
 
-  pages: string[];
+  latestItemTimestamp?: number;
+  // pages: string[];
   pageSize: number;
 }
 
-export interface IPage<IEntry> {
-  version: number;
+export interface IPage {
+  $schema: string;
 
+  _self: string; // back reference to the path
   indexPath: string; // back reference to the index
-  pagePath: string; // back reference to the path
 
-  entries: IEntry[];
+  items: Post[];
 }
 
 export interface IDictionary {
-  [key:string]: boolean
-}
-export interface IDACResponse {
-  submitted: boolean;
-  error?: string;
+  [key: string]: boolean;
 }
 
 export enum EntryType {
-  'NEWCONTENT',
-  'INTERACTIONS'
+  "POST",
+  "COMMENT",
 }
 
 // NOTE: the values contained by this interface are 'static', meaning they won't
@@ -56,10 +62,9 @@ export enum EntryType {
 export interface IFilePaths {
   SKAPPS_DICT_PATH: string;
 
-  NC_INDEX_PATH: string;
-  NC_PAGE_PATH: string;
+  POSTS_INDEX_PATH: string;
+  POSTS_PAGE_PATH: string;
 
-  CI_INDEX_PATH: string;
-  CI_PAGE_PATH: string;
+  COMMENTS_INDEX_PATH: string;
+  COMMENTS_PAGE_PATH: string;
 }
-    

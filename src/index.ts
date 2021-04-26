@@ -1,5 +1,5 @@
-import ContentRecordDAC from "./dac";
+import FeedDAC from "./dac";
 
 (async () => {
-  new ContentRecordDAC();
+  new FeedDAC();
 })();

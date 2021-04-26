@@ -1,4 +1,8 @@
-# Content Record DAC
+# Feed DAC
+
+Forked from Content Record DAC. The README below is not modified yet.
+
+---
 
 ## Introduction
 

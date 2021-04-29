@@ -7,7 +7,7 @@ import stringify from "canonical-json";
 import CryptoJS from "crypto-js";
 
 // DAC consts
-const DATA_DOMAIN = "skyfeed-dev.hns";
+const DATA_DOMAIN = "feed-dac.hns";
 
 const urlParams = new URLSearchParams(window.location.search);
 const DEBUG_ENABLED = urlParams.get("debug") === "true";
